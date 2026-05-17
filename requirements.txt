@@ -3,8 +3,4 @@
 # on the runner via its requirements.txt, but Snyk can only see them
 # here because this file lives in the caller's workspace.
 
-requests==2.28.1
-PyYAML==6.0
-Jinja2==3.1.2
-urllib3==1.26.14
 checkov==3.2.529
