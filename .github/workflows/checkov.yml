@@ -1,0 +1,143 @@
+name: Checkov IaC Scan + Snyk Visibility Test
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  # ── Terraform scan via reusable action (Repo B) ──────────────────────────
+  checkov-terraform:
+    name: Checkov – Terraform
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Checkout Repo A
+        uses: actions/checkout@v4
+
+      # Action lives in Repo B — its requirements.txt is never checked out
+      # into this workspace. Checkov is installed at $GITHUB_ACTION_PATH
+      # (a temp directory outside $GITHUB_WORKSPACE).
+      - name: Run Checkov (Terraform) via reusable action
+        uses: YOUR_ORG/checkov-reusable-action@main
+        with:
+          directory: terraform/
+          framework: terraform
+          soft_fail: 'true'
+          output_format: sarif
+          output_file: results-terraform.sarif
+
+      - name: Upload SARIF – Terraform
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: results-terraform.sarif
+          category: checkov-terraform
+
+  # ── Kubernetes scan via reusable action (Repo B) ─────────────────────────
+  checkov-kubernetes:
+    name: Checkov – Kubernetes
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Checkout Repo A
+        uses: actions/checkout@v4
+
+      - name: Run Checkov (Kubernetes) via reusable action
+        uses: YOUR_ORG/checkov-reusable-action@main
+        with:
+          directory: kubernetes/
+          framework: kubernetes
+          soft_fail: 'true'
+          output_format: sarif
+          output_file: results-k8s.sarif
+
+      - name: Upload SARIF – Kubernetes
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: results-k8s.sarif
+          category: checkov-kubernetes
+
+  # ── Snyk visibility test ─────────────────────────────────────────────────
+  #
+  # This job answers: does Snyk (running in Repo A) detect Python packages
+  # installed by the reusable action from Repo B?
+  #
+  # Expected outcome:
+  #   - "pip list" shows checkov and all its deps ARE on the runner
+  #   - Snyk reports no Python manifest found — it cannot see them
+  #   - This proves the blind spot: Snyk only scans the caller workspace
+  # ─────────────────────────────────────────────────────────────────────────
+  snyk-visibility-test:
+    name: Snyk – Visibility Test
+    runs-on: ubuntu-latest
+    needs: [checkov-terraform, checkov-kubernetes]
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout Repo A
+        uses: actions/checkout@v4
+
+      # Invoke the reusable action so its packages get installed on this runner
+      - name: Run reusable action (installs Checkov from Repo B)
+        uses: YOUR_ORG/checkov-reusable-action@main
+        with:
+          directory: terraform/
+          soft_fail: 'true'
+
+      # ── Diagnostic: show what is on the runner vs what is in the workspace ──
+
+      - name: Show packages installed on runner
+        run: |
+          echo "============================================"
+          echo "  Packages installed on the runner (pip list)"
+          echo "  These came from Repo B's requirements.txt"
+          echo "============================================"
+          pip list | grep -i checkov || echo "(checkov not found in pip list)"
+          echo ""
+          echo "Full pip list:"
+          pip list
+
+      - name: Show Repo A workspace contents
+        run: |
+          echo "============================================"
+          echo "  Repo A workspace ($GITHUB_WORKSPACE)"
+          echo "  This is all Snyk can see"
+          echo "============================================"
+          find "$GITHUB_WORKSPACE" -not -path '*/.git/*' | sort
+          echo ""
+          echo "Python manifests in workspace:"
+          find "$GITHUB_WORKSPACE" -name "requirements*.txt" -o -name "Pipfile" -o -name "pyproject.toml" | sort
+          echo "(none expected — Repo B's requirements.txt is NOT here)"
+
+      # ── Snyk scan: will it find anything? ───────────────────────────────────
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Repo A dependencies
+        run: pip install -r requirements.txt
+
+      - name: Set up Snyk CLI
+        uses: snyk/actions/setup@master
+
+      - name: Run Snyk Python scan
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: |
+          echo "============================================"
+          echo "  Running: snyk test"
+          echo "  Snyk will scan $GITHUB_WORKSPACE for manifests"
+          echo "============================================"
+          snyk test --file=requirements.txt --package-manager=pip

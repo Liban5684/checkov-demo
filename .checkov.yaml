@@ -1,0 +1,28 @@
+# .checkov.yaml – Checkov configuration
+# Docs: https://www.checkov.io/2.Basics/CLI%20Command%20Reference.html
+
+# Directories to scan
+directory:
+  - terraform/
+  - kubernetes/
+
+# Output format when running locally
+output:
+  - cli
+
+# Compact output (one line per finding)
+compact: true
+
+# Fail on HIGH and MEDIUM severity; allow LOW
+# (uncomment to enable severity-based filtering)
+# check:
+#   - HIGH
+#   - MEDIUM
+
+# Checks to permanently skip across the whole repo.
+# Prefer inline suppression (checkov:skip=...) for per-resource exceptions.
+skip-check:
+  - CKV2_AWS_6    # example: skip a check you've accepted the risk for
+
+# Use a baseline to suppress pre-existing findings on first adoption
+# baseline: .checkov.baseline

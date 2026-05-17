@@ -1,0 +1,12 @@
+{
+  "baseline": {
+    "terraform/modules/s3/main.tf": {
+      "CKV_AWS_18": [
+        {
+          "bc_check_id": "BC_AWS_S3_13",
+          "resource": "aws_s3_bucket.logs"
+        }
+      ]
+    }
+  }
+}
