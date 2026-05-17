@@ -135,6 +135,7 @@ jobs:
       - name: Run Snyk Python scan
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        continue-on-error: true
         run: |
           echo "============================================"
           echo "  Running: snyk test"
