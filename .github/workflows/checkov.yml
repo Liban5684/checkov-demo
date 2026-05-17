@@ -142,4 +142,12 @@ jobs:
           echo "  Snyk will scan $GITHUB_WORKSPACE for manifests"
           echo "============================================"
           snyk test --file=requirements.txt --package-manager=pip
-          snyk monitor --file=requirements.txt --package-manager=pip
+          
+      - name: Publish results to Snyk dashboard
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: |
+          snyk monitor \
+            --file=requirements.txt \
+            --package-manager=pip \
+            --project-name=checkov-demo
