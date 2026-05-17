@@ -23,7 +23,7 @@ jobs:
       # into this workspace. Checkov is installed at $GITHUB_ACTION_PATH
       # (a temp directory outside $GITHUB_WORKSPACE).
       - name: Run Checkov (Terraform) via reusable action
-        uses: Liban5684/checkov-reusable-action@main
+        uses: Liban5684/checkov-reusable-action@master
         with:
           directory: terraform/
           framework: terraform
@@ -51,7 +51,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Run Checkov (Kubernetes) via reusable action
-        uses: Liban5684/checkov-reusable-action@main
+        uses: Liban5684/checkov-reusable-action@master
         with:
           directory: kubernetes/
           framework: kubernetes
@@ -89,7 +89,7 @@ jobs:
 
       # Invoke the reusable action so its packages get installed on this runner
       - name: Run reusable action (installs Checkov from Repo B)
-        uses: Liban5684/checkov-reusable-action@main
+        uses: Liban5684/checkov-reusable-action@master
         with:
           directory: terraform/
           soft_fail: 'true'
